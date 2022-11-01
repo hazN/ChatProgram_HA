@@ -1,8 +1,8 @@
 /*
 	Hassan Assaf
-	INFO-6016 
-	Project #1: Chat Program
-	Due 2022-10-19
+	INFO-6016
+	Project #2: Authentication Server
+	Due 2022-11-09
 */
 #pragma once
 

@@ -1,8 +1,8 @@
 ﻿/*
 	Hassan Assaf
 	INFO-6016
-	Project #1: Chat Program
-	Due 2022-10-19
+	Project #2: Authentication Server
+	Due 2022-11-09
 */
 #define WIN32_LEAN_AND_MEAN
 
@@ -49,8 +49,7 @@ int main(int argc, char** argv)
 	if (result != 0)
 		return result;
 
-	// User Input
-	std::cout << "Choose an option: \n1. Join Room\n2. Leave Room\n3. Send Message\n4. Exit" << std::endl;
+
 	int input = 0;
 
 	// Loop until client wants to exit so we can constantly be checking for msgs
@@ -63,6 +62,8 @@ int main(int argc, char** argv)
 	// Client Loop
 	for (;;)
 	{
+		// User Input
+		std::cout << "Choose an option: \n1. Join Room\n2. Leave Room\n3. Send Message\n4. Create Account \n5. Login\n6. Exit" << std::endl;
 		std::cin >> input;
 
 		switch (input)
@@ -164,7 +165,66 @@ int main(int argc, char** argv)
 			CLIENT.sendData(*buffer, packet.header.length);
 			break;
 		}
-		case 4:	// Shut the client down
+		case 4: // Create Account
+			{
+			// User Input
+			std::string inputString;
+			std::cout << "Enter email and password separated by a ':' (example -> h_sodeassaf@fanshaweonline.ca:password) " << std::endl;
+			std::cin.ignore();
+			std::getline(std::cin, inputString);
+			// Create Packet
+			CreateAccountPacket packet;
+			packet.header.id = 4;
+			// Split with delimiter
+			std::vector<std::string> temp = split(inputString, ':');
+			packet.content.email = temp[0];
+			packet.content.password = temp[1];
+
+			packet.header.length = sizeof(packet.header) + sizeof(packet.content.email.size()) + packet.content.email.size()
+				+ sizeof(packet.content.password) + packet.content.password.size();
+
+			// Create buffer and set it up
+			Buffer* buffer = new Buffer(packet.header.length);
+			buffer->WriteInt32LE(packet.header.length);
+			buffer->WriteInt32LE(packet.header.id);
+			buffer->WriteInt32LE(packet.content.email.size());
+			buffer->WriteString(packet.content.email);
+			buffer->WriteInt32LE(packet.content.password.size());
+			buffer->WriteString(packet.content.password);
+			// Send data
+			CLIENT.sendData(*buffer, packet.header.length);
+			break;
+			}
+		case 5: // Authenticate
+			{
+			// User Input
+			std::string inputString;
+			std::cout << "Enter email and password separated by a ':' (example -> h_sodeassaf@fanshaweonline.ca:password) " << std::endl;
+			std::cin.ignore();
+			std::getline(std::cin, inputString);
+			// Create Packet
+			CreateAccountPacket packet;
+			packet.header.id = 5;
+			// Split with delimiter
+			std::vector<std::string> temp = split(inputString, ':');
+			packet.content.email = temp[0];
+			packet.content.password = temp[1];
+
+			packet.header.length = sizeof(packet.header) + sizeof(packet.content.email.size()) + packet.content.email.size()
+				+ sizeof(packet.content.password) + packet.content.password.size();
+
+			// Create buffer and set it up
+			Buffer* buffer = new Buffer(packet.header.length);
+			buffer->WriteInt32LE(packet.header.length);
+			buffer->WriteInt32LE(packet.header.id);
+			buffer->WriteInt32LE(packet.content.email.size());
+			buffer->WriteString(packet.content.email);
+			buffer->WriteInt32LE(packet.content.password.size());
+			buffer->WriteString(packet.content.password);
+			// Send data
+			CLIENT.sendData(*buffer, packet.header.length);
+			break;			}
+		case 6:	// Shut the client down
 			endThread = true;
 			CLIENT.ShutDown();
 			break;

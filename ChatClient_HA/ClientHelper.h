@@ -1,8 +1,8 @@
 ﻿/*
 	Hassan Assaf
 	INFO-6016
-	Project #1: Chat Program
-	Due 2022-10-19
+	Project #2: Authentication Server
+	Due 2022-11-09
 */
 #define WIN32_LEAN_AND_MEAN
 
@@ -59,6 +59,11 @@ struct SendMessageData
 	std::string message;
 };
 
+struct AccountData
+{
+	std::string email;
+	std::string password;
+};
 struct UserRoomPacket
 {
 	PacketHeader header;
@@ -68,4 +73,10 @@ struct SendMessagePacket
 {
 	PacketHeader header;
 	SendMessageData content;
+};
+
+struct CreateAccountPacket
+{
+	PacketHeader header;
+	AccountData content;
 };

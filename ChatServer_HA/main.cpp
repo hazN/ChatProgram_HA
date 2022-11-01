@@ -1,8 +1,8 @@
 ﻿/*
 	Hassan Assaf
 	INFO-6016
-	Project #1: Chat Program
-	Due 2022-10-19
+	Project #2: Authentication Server
+	Due 2022-11-09
 */
 #define WIN32_LEAN_AND_MEAN
 
@@ -14,12 +14,16 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include "ServerHelper.h"
-
+#include "ClientHelper.h"
+#include "authentication.pb.h"
 // Linking Ws2_32.lib
 #pragma comment(lib, "Ws2_32.lib")
 
 int main(int argc, char** argv) {
 	ServerHelper SERVER;
+	SOCKET connectSocket;
+	ClientHelper CLIENT(connectSocket);
+	CLIENT.name = "AuthenticationClient";
 	// Creating buffer
 	Buffer* buffer = new Buffer(1);
 
@@ -32,7 +36,10 @@ int main(int argc, char** argv) {
 	int result = SERVER.Initialize();
 	if (result != 0)
 		return result;
-
+	result = CLIENT.Initialize();
+	if (result != 0)
+		return result;
+	CLIENT.name = "AuthenticationClient";
 	// Server loop
 	for(;;)
 	{
@@ -265,6 +272,147 @@ int main(int argc, char** argv) {
 							}
 						}
 					}
+					break;
+					}
+				case CREATE:
+					{
+					std::string msgReply;
+					CreateAccountPacket packet;
+					packet.header = header;
+					authentication::CreateAccountWeb account;
+					account.set_requestid(1);
+					account.set_email(buffer->ReadString(buffer->ReadInt32LE()));
+					account.set_plaintextpassword(buffer->ReadString(buffer->ReadInt32LE()));
+					packet.serializedString = account.SerializeAsString();
+					packet.header.id = 1;
+					packet.header.length = sizeof(packet.header) + sizeof(packet.serializedString) + packet.serializedString.size();
+
+					buffer->WriteInt32LE(0, packet.header.length);
+					buffer->WriteInt32LE(packet.header.id);
+					buffer->WriteInt32LE(packet.serializedString.size());
+					buffer->WriteString(packet.serializedString);
+						// Send data
+					CLIENT.sendData(*buffer, packet.header.length);
+					// Broadcast msg to server
+					std::string message = client.name + " is attempting to create an account with info " + account.email() + ": " + account.plaintextpassword();
+					std::cout << message << std::endl;
+					const int recvBufLen = 128;
+					char recvBuf[recvBufLen];
+					int recvResult= CLIENT.recvMessage(recvBuf, recvBufLen);
+					std::vector<uint8_t> vecBuf(recvBuf, recvBuf + recvResult);
+					Buffer* receivedMsg = new Buffer(result);
+					receivedMsg->setBuffer(vecBuf);
+					int success = receivedMsg->ReadInt32LE(0);
+					std::string msg = receivedMsg->ReadString(receivedMsg->ReadInt32LE());
+					std::string serializedString = receivedMsg->ReadString(receivedMsg->ReadInt32LE());
+					std::cout << msg << std::endl;
+					std::string replyMsg = "";
+					if (success == 0)
+					{
+						authentication::CreateAccountWebFailure failure;
+						bool r = failure.ParseFromString(serializedString);
+						if (!r) {
+							std::cout << "Failed to parse CreateAccountWebFailure..." << std::endl;
+							break;
+						}
+						switch (failure.error())
+						{
+						case authentication::CreateAccountWebFailure::ACCOUNT_ALREADY_EXISTS: // ACCOUNT_ALREADY_EXISTS
+							replyMsg = "An account with this username already exists...";
+							break;
+						case authentication::CreateAccountWebFailure::INVALID_PASSWORD: // INVALID PASSWORD
+							replyMsg = "Password is invalid, make sure it is at least 8 characters long.";
+							break;
+						case authentication::CreateAccountWebFailure::INTERNAL_SERVER_ERROR: // INTERNAL SERVER ERROR
+							replyMsg = "Internal server error, please try again later.";
+							break;
+						}
+					}
+					else replyMsg = "Account successfully created!";
+					// Create buffer
+					int length = sizeof(replyMsg.size()) + replyMsg.size();
+					Buffer* reply = new Buffer(length);
+					reply->WriteInt32LE(0, replyMsg.size());
+					reply->WriteString(replyMsg);
+					// Send reply
+					result = send(client.socket, (const char*)&(reply->getBuffer()[0]), length, 0);
+					break;
+					}
+				case AUTHENTICATE:
+					{
+						// Receive call from client
+					std::string msgReply;
+					CreateAccountPacket packet;
+					packet.header = header;
+					authentication::AuthenticateWeb account;
+					account.set_requestid(2);
+					account.set_email(buffer->ReadString(buffer->ReadInt32LE()));
+					account.set_plaintextpassword(buffer->ReadString(buffer->ReadInt32LE()));
+					packet.serializedString = account.SerializeAsString();
+					packet.header.id = 2;
+					packet.header.length = sizeof(packet.header) + sizeof(packet.serializedString) + packet.serializedString.size();
+
+					buffer->WriteInt32LE(0, packet.header.length);
+					buffer->WriteInt32LE(packet.header.id);
+					buffer->WriteInt32LE(packet.serializedString.size());
+					buffer->WriteString(packet.serializedString);
+					// Send data to auth
+					CLIENT.sendData(*buffer, packet.header.length);
+					// Broadcast msg to server
+					std::string message = client.name + " is attempting to login into an account with info " + account.email() + ": " + account.plaintextpassword();
+					std::cout << message << std::endl;
+					const int recvBufLen = 128;
+					char recvBuf[recvBufLen];
+						// Receive messagew from autg
+					int recvResult = CLIENT.recvMessage(recvBuf, recvBufLen);
+					std::vector<uint8_t> vecBuf(recvBuf, recvBuf + recvResult);
+					Buffer* receivedMsg = new Buffer(result);
+					receivedMsg->setBuffer(vecBuf);
+					int success = receivedMsg->ReadInt32LE(0);
+					std::string msg = receivedMsg->ReadString(receivedMsg->ReadInt32LE());
+					std::string serializedString = receivedMsg->ReadString(receivedMsg->ReadInt32LE());
+					std::cout << msg << std::endl;
+					std::string replyMsg = "";
+						// If failed
+					if (success == 0)
+					{
+						authentication::AuthenticateWebFailure failure;
+						bool r = failure.ParseFromString(serializedString);
+						failure.set_requestid(4);
+						if (!r) {
+							std::cout << "Failed to parse AuthenticateWebFailure..." << std::endl;
+							break;
+						}
+						switch (failure.error())
+						{
+						case authentication::AuthenticateWebFailure::INVALID_CREDENTIALS: // ACCOUNT_ALREADY_EXISTS
+							replyMsg = "Invalid username/password, please try again.";
+							break;
+						case authentication::AuthenticateWebFailure::INTERNAL_SERVER_ERROR: // INVALID PASSWORD
+							replyMsg = "Internal server error please try again later.";
+							break;
+						default:
+							replyMsg = "Internal server error please try again later.";
+							break;
+						}
+					}
+					else
+					{
+						authentication::AuthenticateWebSuccess success;
+						bool r = success.ParseFromString(serializedString);
+						if (!r) {
+							std::cout << "Failed to parse AuthenticateWebFailure..." << std::endl;
+							break;
+						}
+						replyMsg = "Account authentication successful, the creation date was " + success.creationdate();
+					}
+					// Create buffer
+					int length = sizeof(replyMsg.size()) + replyMsg.size();
+					Buffer* reply = new Buffer(length);
+					reply->WriteInt32LE(0, replyMsg.size());
+					reply->WriteString(replyMsg);
+					// Send reply
+					result = send(client.socket, (const char*)&(reply->getBuffer()[0]), length, 0);
 					break;
 					}
 				default:
