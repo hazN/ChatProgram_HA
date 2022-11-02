@@ -5,8 +5,8 @@
 
 Build normally and as expected.
 
-First run ChatServer_HA, then start as many new instances
-of Chat Client as needed.
+Running the program should automatically start all 3 instances needed, if not manually start in this 
+order: AuthenticationServer, ChatServer, ChatClient
 
 User input is as follows:
 
@@ -24,3 +24,7 @@ Enter the NAME of the room
 Sending a message:
 Enter the room name and message IN ONE LINE delimited by a ":"
 Example: MainRoom:Hey testing 123
+
+Creating/Authenticating accounts:
+Enter the email password delimited by a ":"
+Example: h_sodeassaf@fanshaweonline.ca:password
