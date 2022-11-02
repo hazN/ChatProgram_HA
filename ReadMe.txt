@@ -14,7 +14,9 @@ Main screen(input the #):
 1. Join Room
 2. Leave Room
 3. Send Message
-4. Exit
+4. Create Account
+5. Authenticate account
+6. Exit
 
 *It is important to run exit before closing.
 
